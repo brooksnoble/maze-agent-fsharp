@@ -105,28 +105,40 @@ let sprintMazeState (maze: Maze2D) (mazeState: MazeState) =
     let gridStr = mazeStr |> markPosition (maze.Length, maze.[0].Length) mazeState.Position 'O'
     gridStr + "\n" + (match mazeState.Status with | NotDone -> "Not Done" | Done -> "Done!")
 
-let sprintMazeStates (maze: Maze2D) (mazeStates: MazeState list) =
+let sprintMazeStates (maze: Maze2D) (labelFunc: int -> char) (mazeStates: MazeState list) =
     let mazeStr = mazeToString maze
     mazeStates 
     |> List.mapi (fun i s -> i, s.Position)
-    |> List.fold (fun str (i, position) -> markPosition (maze.Length, maze.[0].Length) position ((int 'a') + i |> char) str) mazeStr
+    |> List.fold (fun str (i, position) -> markPosition (maze.Length, maze.[0].Length) position (labelFunc i) str) mazeStr
 
 let possibleMazeActions state = [ MoveLeft; MoveRight; MoveUp; MoveDown ]
 
 let constantCost action = 1
 
+let depthFirst list = 
+    match list with
+    | [] -> failwith "oops"
+    | (head::tail) -> head, tail
+
+let breadthFirst list = 
+    match (list |> List.rev) with
+    | [] -> failwith "oops"
+    | (head::tail) -> head, (List.rev tail)
+
 let search (frontierDiagnostic: ('TAction list * int * 'TState) list -> unit) 
+           (frontierNodePicker: ('TAction list * int * 'TState) list -> ('TAction list * int * 'TState) * (('TAction list * int * 'TState) list))
            (initialState: 'TState) (handle: 'TState -> 'TAction -> 'TState) (possibleActions: 'TState -> 'TAction list) (costFunction: 'TAction -> int) (hasReachedGoal: 'TState -> bool) =
     let expand state =
         let nextActions = possibleActions state
         nextActions |> List.map (fun a -> a, costFunction a, handle state a)
 
     let rec inner frontier seenStates =
-        frontierDiagnostic frontier // for display or logging
+        frontierDiagnostic frontier // for display or logging frontier at each step
         match frontier with
-        | [] -> failwith "empty frontier"
-        | (prevActions, currentCost, nextState)::rest ->
-            if hasReachedGoal nextState then (nextState, currentCost, prevActions)
+        | [] -> None // empty frontier means we've exhausted all states, so there is no solution
+        | frontier ->
+            let ((prevActions, currentCost, nextState), rest) = frontierNodePicker frontier
+            if hasReachedGoal nextState then Some (nextState, currentCost, List.rev prevActions)
             else
                 let seenStates = (nextState::seenStates)
                 let blah = 
@@ -196,25 +208,32 @@ let mainSearch maze =
         Console.Clear()
         frontier
         |> List.map (fun (_, _, state) -> state)
-        |> sprintMazeStates maze
+        |> sprintMazeStates maze (fun i -> (int 'a') + i |> char)
         |> printfn "Frontier States:\n%s"
 
-        System.Console.ReadLine() |> ignore
+        //System.Console.ReadLine() |> ignore
+        System.Threading.Thread.Sleep(10)
 
-    let (goalState, cost, actions) = search diagnostic initialState (handleAction maze) possibleMazeActions (fun x -> 1) (fun s -> s.Status = Done)
-
+    let solution = search diagnostic breadthFirst initialState (handleAction maze) possibleMazeActions (fun x -> 1) (fun s -> s.Status = Done)
     Console.Clear()
-    printfn "GOAL Reached!"
-    printfn "Actions: %s" (List.rev actions |> List.map sprintAction |> String.concat "")
-    printfn "Cost: %d" cost
-    printfn "State:\n%s" (sprintMazeState maze goalState)
-    System.Console.ReadLine() |> ignore
 
-    ()
+    match solution with
+    | None -> 
+        printfn "No Solution Found!"
+    | Some (goalState, cost, actions) ->
+        let states = 
+            actions
+            |> List.scan (fun s a -> handleAction maze s a) initialState
+        
+        printfn "Solution Found!"
+        printfn "Actions: %s" (actions |> List.map sprintAction |> String.concat "")
+        printfn "Cost: %d" cost
+        printfn "%s" (sprintMazeStates maze (fun i -> '-') states)
+    System.Console.ReadLine() |> ignore
 
 [<EntryPoint>]
 let main argv = 
-    let mazeText = System.IO.File.OpenText("..\..\..\..\mazes\smallMaze.txt").ReadToEndAsync() |> Async.AwaitTask |> Async.RunSynchronously
+    let mazeText = System.IO.File.OpenText("..\..\..\..\mazes\\bigMaze.txt").ReadToEndAsync() |> Async.AwaitTask |> Async.RunSynchronously
     
     let maze = parseMaze mazeText
     printfn "Maze Loaded:\n\n%s" (maze |> mazeToString)
