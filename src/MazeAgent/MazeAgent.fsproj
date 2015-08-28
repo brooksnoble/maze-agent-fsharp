@@ -47,6 +47,10 @@
     <Reference Include="System.Numerics" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Search.fs" />
+    <Compile Include="Maze.fs" />
+    <Compile Include="Parsing.fs" />
+    <Compile Include="Printing.fs" />
     <Compile Include="Program.fs" />
     <None Include="App.config" />
   </ItemGroup>
