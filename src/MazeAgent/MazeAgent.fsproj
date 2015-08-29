@@ -8,7 +8,7 @@
     <ProjectGuid>124afbd7-77d5-42f4-ac4c-2522fdadb593</ProjectGuid>
     <OutputType>Exe</OutputType>
     <RootNamespace>ConsoleApplication1</RootNamespace>
-    <AssemblyName>ConsoleApplication1</AssemblyName>
+    <AssemblyName>MazeAgent</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <TargetFSharpCoreVersion>4.3.1.0</TargetFSharpCoreVersion>

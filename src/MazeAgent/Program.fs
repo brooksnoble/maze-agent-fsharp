@@ -88,8 +88,6 @@ let main argv =
         ("Depth First", depthFirst)
         ("Breadth First", breadthFirst)
     |]
-
-    //let combinations = crossproduct mazes searchStrategies
     
     let results = 
         mazes 
