@@ -6,11 +6,16 @@ open Search
 open Printing
 open Parsing
 
+let pause () =
+    printf "Press any key to continue..."
+    System.Console.ReadKey(true) |> ignore
+
+
 let mainPlay maze =
     let rec play maze state =
         Console.Clear()
         printfn "%s" (sprintMazeState maze state)
-        let key = System.Console.ReadKey(true)
+        let key = Console.ReadKey(true)
         let action =
             match key.Key with 
             | ConsoleKey.DownArrow -> Some MoveDown
@@ -30,7 +35,7 @@ let mainPlay maze =
 
     play maze initialState
 
-let mainSearch maze frontierItemPicker title =
+let mainSearch maze frontierItemPicker pauseBetweenRuns =
     let initialState = getInitialState maze
 
     let diagnostic = fun (frontier: FrontierItem<MazeAction, MazeState> list) -> 
@@ -40,7 +45,6 @@ let mainSearch maze frontierItemPicker title =
         |> sprintMazeStates maze (fun i -> 'o')
         |> printfn "Frontier States:\n%s"
 
-        //System.Console.ReadLine() |> ignore
         System.Threading.Thread.Sleep(10)
 
     let result = search diagnostic frontierItemPicker initialState (handleAction maze) possibleMazeActions (fun x -> 1) (fun s -> s.Status = Done)
@@ -60,25 +64,55 @@ let mainSearch maze frontierItemPicker title =
         printfn "Actions: %s" (fi.ActionsToReach |> List.map sprintAction |> String.concat "")
         printfn "Cost: %d" fi.CostToReach
         printfn "\n%s" (sprintMazeStates maze (fun i -> '.') states)
-    System.Console.ReadLine() |> ignore
+    
+    if pauseBetweenRuns then pause ()
+    result
 
 let loadMazeFile filename = 
     let mazeText = System.IO.File.OpenText("..\..\..\..\mazes\\" + filename).ReadToEndAsync() |> Async.AwaitTask |> Async.RunSynchronously
     parseMaze mazeText
 
+let crossproduct l1 l2 =
+  seq { for el1 in l1 do
+          for el2 in l2 do
+            yield el1, el2 };;
+
 [<EntryPoint>]
 let main argv = 
-    let mazes = 
-        [ "smallMaze.txt"; "mediumMaze.txt"; "bigMaze.txt"]
-        |> List.map loadMazeFile
-    
-    let searchStrategies = [ 
-        ("Depth First"), depthFirst; 
-        ("Breadth First"), breadthFirst
-    ]
+    let mazeFiles = [| 
+        ("Small", "smallMaze.txt");
+        ("Medium", "mediumMaze.txt");
+        ("Big", "bigMaze.txt")
+    |]
 
-    for maze in mazes do
-        for (title, strategy) in searchStrategies do
-            mainSearch maze strategy title
+    let mazes = mazeFiles |> Array.map (fun (l,f) -> l, loadMazeFile f)
+    
+    let searchStrategies = [| 
+        ("Depth First", depthFirst)
+        ("Breadth First", breadthFirst)
+    |]
+
+    //let combinations = crossproduct mazes searchStrategies
+    
+    let results = 
+        mazes 
+        |> Array.map (fun (mazeName, maze) -> (mazeName, searchStrategies |> Array.map (fun (strategyName, strategy) -> (strategyName, mainSearch maze strategy false))))
+
+    Console.Clear()
+
+    for (mazeName, subResults) in results do
+        printfn "%s" mazeName
+
+        for (strategyName, result) in subResults do
+            printfn "\t%s" strategyName
+            printfn "\t\tAlgorithm Steps Taken: %d" result.StepsTaken
+            match result.Solution with
+            | None ->
+                printfn "\t\tNo Solution Found"
+            | Some solution ->
+                printfn "\t\tSolution Found"
+                printfn "\t\tCost: %d" solution.CostToReach
+
+    pause ()
 
     0 // return an integer exit code
