@@ -68,14 +68,11 @@ let mainSearch maze frontierItemPicker pauseBetweenRuns =
     if pauseBetweenRuns then pause ()
     result
 
-let loadMazeFile filename = 
-    let mazeText = System.IO.File.OpenText("..\..\..\..\mazes\\" + filename).ReadToEndAsync() |> Async.AwaitTask |> Async.RunSynchronously
-    parseMaze mazeText
+let (@@) str1 str2 = System.IO.Path.Combine(str1, str2)
 
-let crossproduct l1 l2 =
-  seq { for el1 in l1 do
-          for el2 in l2 do
-            yield el1, el2 };;
+let loadMazeFile filename = 
+    let mazeText = System.IO.File.OpenText(".." @@ ".." @@ ".." @@ ".." @@ "mazes" @@ filename).ReadToEndAsync() |> Async.AwaitTask |> Async.RunSynchronously
+    parseMaze mazeText
 
 [<EntryPoint>]
 let main argv = 
