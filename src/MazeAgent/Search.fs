@@ -25,7 +25,7 @@ let search (frontierDiagnostic: FrontierItem<'TAction, 'TState> list -> unit)
         nextActions 
         |> List.map (fun a -> { ActionsToReach = a::frontierItem.ActionsToReach; CostToReach = frontierItem.CostToReach + (costForAction a); State = handle frontierItem.State a })
 
-    let rec inner frontier seenStates stepsTaken =
+    let rec inner frontier seenFrontierItems stepsTaken =
         frontierDiagnostic frontier // for display or logging frontier at each step
         match frontier with
         | [] -> { Solution = None; StepsTaken = stepsTaken } // empty frontier means we've exhausted all states, so there is no solution
@@ -35,12 +35,12 @@ let search (frontierDiagnostic: FrontierItem<'TAction, 'TState> list -> unit)
 
             if isGoalState pickedFrontierItem.State then { Solution = Some { pickedFrontierItem with ActionsToReach = List.rev pickedFrontierItem.ActionsToReach}; StepsTaken = stepsTaken }
             else
-                let seenStates = (pickedFrontierItem.State::seenStates)
+                let seenFrontierItems = (pickedFrontierItem::seenFrontierItems)
                 let newFrontierItems = 
                     expand pickedFrontierItem
-                    |> List.filter (fun fi -> seenStates |> List.exists (fun s -> s = fi.State) |> not)
+                    |> List.filter (fun fi -> seenFrontierItems |> List.exists (fun sfi -> sfi.State = fi.State && sfi.CostToReach <= fi.CostToReach) |> not)
 
                 let frontier = List.append restOfFrontierItems newFrontierItems
-                inner frontier seenStates (stepsTaken + 1)
+                inner frontier seenFrontierItems (stepsTaken + 1)
 
     inner [ { ActionsToReach = []; CostToReach = 0; State = initialState } ] [] 0
